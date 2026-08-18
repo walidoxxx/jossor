@@ -495,7 +495,7 @@ export default function RegistrationForm() {
           </div>
 
           <div style={{ marginTop: 22, padding: 18, background: "#f8fafc", borderRadius: 14 }}>
-            <div style={{ fontWeight: 800, marginBottom: 10 }}>الحالة العائلية</div>
+            <div style={{ fontWeight: 800, marginBottom: 10 }}>الحالة</div>
 
             <div className="grid-3">
               {([ ["normal", "عادية"], ["siblings", "إخوة"], ["orphan", "يتيم"] ] as [FamilyStatus, string][]).map(([value, label]) => (
@@ -544,7 +544,7 @@ export default function RegistrationForm() {
           </div>
 
           <div style={{ marginTop: 18, padding: 16, borderRadius: 12, background: "#f8fafc", color: "#334155" }}>
-            الحالة العائلية المختارة: <strong>{familyLabel}</strong>
+            الحالة المختارة: <strong>{familyLabel}</strong>
           </div>
         </section>
       )}
