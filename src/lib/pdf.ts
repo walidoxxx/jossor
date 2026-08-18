@@ -97,9 +97,15 @@ async function getPhotoDataUrl(path: string | null) {
   }
 }
 
-function header(title: string) {
+function header(title: string, logoDataUrl: string) {
   return `
     <div class="header">
+      ${
+        logoDataUrl
+          ? `<img class="association-logo" src="${esc(logoDataUrl)}" alt="شعار جمعية جسور" />`
+          : ""
+      }
+
       <div class="header-ar">
         جمعية جسور لتنمية النقل المدرسي بالتمسية
       </div>
@@ -115,14 +121,88 @@ function header(title: string) {
   `;
 }
 
+/*
+  كنستعملو الملف:
+  public/logo-jossour-mark.jpg
+
+  وبما أنه JPG، كنحوّلو الخلفية البيضاء داخلياً إلى شفافة قبل إدخاله
+  للـHTML الذي غادي يتحول إلى PDF، باش مايبان حتى مربع أبيض حول الشعار.
+*/
+async function getLogoDataUrl() {
+  try {
+    const response = await fetch("/logo-jossour-mark.jpg", {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Logo download failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error("تعذر تحميل شعار الجمعية."));
+        img.src = objectUrl;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        throw new Error("تعذر تجهيز شعار الجمعية.");
+      }
+
+      context.drawImage(image, 0, 0);
+
+      const imageData = context.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
+
+      const pixels = imageData.data;
+
+      for (let i = 0; i < pixels.length; i += 4) {
+        const r = pixels[i];
+        const g = pixels[i + 1];
+        const b = pixels[i + 2];
+
+        if (r >= 245 && g >= 245 && b >= 245) {
+          pixels[i + 3] = 0;
+        }
+      }
+
+      context.putImageData(imageData, 0, 0);
+
+      return canvas.toDataURL("image/png");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  } catch (logoError) {
+    console.error("PDF LOGO LOAD ERROR:", logoError);
+    return "";
+  }
+}
+
 function page1(
   b: Beneficiary,
   photoUrl: string,
+  logoDataUrl: string,
 ) {
   return `
     <div class="page">
 
-      ${header("سجل المستفيد(ة)")}
+      ${header("سجل المستفيد(ة)", logoDataUrl)}
 
       <div class="top-row">
 
@@ -320,11 +400,11 @@ function page1(
   `;
 }
 
-function page2(b: Beneficiary) {
+function page2(b: Beneficiary, logoDataUrl: string) {
   return `
     <div class="page">
 
-      ${header("التزام أب أو ولي أمر المستفيد(ة)")}
+      ${header("التزام أب أو ولي أمر المستفيد(ة)", logoDataUrl)}
 
       <section class="commit-info">
 
@@ -555,6 +635,17 @@ function styles() {
       height: 120px;
       text-align: center;
       position: relative;
+    }
+
+    .association-logo {
+      position: absolute;
+      right: -18px;
+      top: 0;
+      width: 96px;
+      height: 76px;
+      object-fit: contain;
+      object-position: center;
+      display: block;
     }
 
     .header-ar {
@@ -837,6 +928,7 @@ export async function printBeneficiaryPdf(
 
   document.head.appendChild(style);
 
+  const logoDataUrl = await getLogoDataUrl();
   const parts: string[] = [];
 
   for (const b of list) {
@@ -844,8 +936,8 @@ export async function printBeneficiaryPdf(
     const photoUrl = override || await getPhotoDataUrl(b.photo_path);
 
     parts.push(
-      page1(b, photoUrl),
-      page2(b),
+      page1(b, photoUrl, logoDataUrl),
+      page2(b, logoDataUrl),
     );
   }
 
