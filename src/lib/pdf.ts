@@ -31,7 +31,7 @@ function formatDate(value: string | null) {
     : value;
 }
 
-async function getPhotoUrl(path: string | null) {
+async function getPhotoDataUrl(path: string | null) {
   if (!path) return "";
 
   const { data, error } =
@@ -39,9 +39,62 @@ async function getPhotoUrl(path: string | null) {
       .from(PHOTO_BUCKET)
       .createSignedUrl(path, 600);
 
-  if (error) return "";
+  if (error || !data?.signedUrl) {
+    console.error("PDF PHOTO SIGNED URL ERROR:", error);
+    return "";
+  }
 
-  return data?.signedUrl || "";
+  try {
+    /*
+      html2canvas may display the remote image in the browser but fail to
+      capture it when the image comes from Supabase Storage. Fetching the
+      signed image first and converting it to a data URL makes the image
+      local to the generated document and avoids the cross-origin capture
+      problem.
+    */
+    const response = await fetch(data.signedUrl, {
+      method: "GET",
+      cache: "no-store",
+      mode: "cors",
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Photo download failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const blob = await response.blob();
+
+    if (!blob.type.startsWith("image/")) {
+      throw new Error(
+        `Photo is not an image: ${blob.type || "unknown type"}`,
+      );
+    }
+
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () =>
+        resolve(
+          typeof reader.result === "string"
+            ? reader.result
+            : "",
+        );
+
+      reader.onerror = () =>
+        reject(
+          new Error(
+            "تعذر تحويل صورة المستفيد إلى صيغة مناسبة للـPDF.",
+          ),
+        );
+
+      reader.readAsDataURL(blob);
+    });
+  } catch (photoError) {
+    console.error("PDF PHOTO LOAD ERROR:", photoError);
+    return "";
+  }
 }
 
 function header(title: string) {
@@ -789,7 +842,7 @@ export async function printBeneficiaryPdf(
     parts.push(
       page1(
         b,
-        await getPhotoUrl(b.photo_path),
+        await getPhotoDataUrl(b.photo_path),
       ),
       page2(b),
     );
@@ -826,6 +879,7 @@ export async function printBeneficiaryPdf(
             scale: 2,
             useCORS: true,
             allowTaint: false,
+            imageTimeout: 15000,
             backgroundColor: "#fff",
             logging: false,
             width: PAGE_W,
