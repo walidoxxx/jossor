@@ -814,6 +814,7 @@ function styles() {
 
 export async function printBeneficiaryPdf(
   input: Beneficiary | Beneficiary[],
+  photoOverrides: Record<string, string> = {},
 ) {
   const list = Array.isArray(input)
     ? input
@@ -839,11 +840,11 @@ export async function printBeneficiaryPdf(
   const parts: string[] = [];
 
   for (const b of list) {
+    const override = photoOverrides[b.id] || "";
+    const photoUrl = override || await getPhotoDataUrl(b.photo_path);
+
     parts.push(
-      page1(
-        b,
-        await getPhotoDataUrl(b.photo_path),
-      ),
+      page1(b, photoUrl),
       page2(b),
     );
   }

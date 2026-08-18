@@ -63,6 +63,18 @@ const busCapacities: Record<string, number> = {
 
 const busNumbers = Object.keys(busCapacities);
 
+function fileToDataUrl(file: File | null): Promise<string> {
+  if (!file) return Promise.resolve("");
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+    reader.onerror = () => reject(new Error("تعذر تجهيز صورة المستفيد للوثائق."));
+    reader.readAsDataURL(file);
+  });
+}
+
 const makeChild = (): ChildForm => ({
   id: crypto.randomUUID(),
   full_name: "",
@@ -366,8 +378,16 @@ export default function RegistrationForm() {
         updated_at: new Date().toISOString(),
       };
 
+      const photoDataUrls = await Promise.all(
+        children.map((child) => fileToDataUrl(child.photo)),
+      );
+
       navigate(`/success/${family.registration_number}`, {
-        state: { family, beneficiaries },
+        state: {
+          family,
+          beneficiaries,
+          photoDataUrls,
+        },
       });
     } catch (e: any) {
       console.error("FAMILY REGISTRATION ERROR:", e);
