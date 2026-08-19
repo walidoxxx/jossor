@@ -115,10 +115,10 @@ export default function RegistrationForm() {
 
   const familyLabel =
     guardian.family_status === "normal"
-      ? "عادية"
+      ? "فرد"
       : guardian.family_status === "siblings"
         ? "إخوة"
-        : "يتيم";
+        : "يتم";
 
   const setGuardianValue = <K extends keyof GuardianForm>(
     key: K,
@@ -203,7 +203,7 @@ export default function RegistrationForm() {
         return setError("المرجو تحديد صلة القرابة مع المستفيد.");
       }
       if (guardian.family_status === "orphan" && !guardian.death_certificate) {
-        return setError("المرجو رفع شهادة الوفاة في حالة يتيم.");
+        return setError("المرجو رفع شهادة الوفاة في حالة يتم.");
       }
       if (guardian.family_status === "siblings" && guardian.children_count < 2) {
         return setError("اختر عدد الأبناء: 2 أو 3.");
@@ -498,7 +498,7 @@ export default function RegistrationForm() {
             <div style={{ fontWeight: 800, marginBottom: 10 }}>الحالة</div>
 
             <div className="grid-3">
-              {([ ["normal", "عادية"], ["siblings", "إخوة"], ["orphan", "يتيم"] ] as [FamilyStatus, string][]).map(([value, label]) => (
+              {([ ["normal", "فرد"], ["siblings", "إخوة"], ["orphan", "يتم"] ] as [FamilyStatus, string][]).map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
