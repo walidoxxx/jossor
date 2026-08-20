@@ -9,7 +9,7 @@ export default function Header({ admin = false }: HeaderProps) {
     <header
       dir="rtl"
       style={{
-        background: "#fff",
+        background: "#ffffff",
         borderBottom: "1px solid #e7ecef",
         position: "sticky",
         top: 0,
@@ -20,134 +20,139 @@ export default function Header({ admin = false }: HeaderProps) {
       <div
         className="container"
         style={{
+          minHeight: 82,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          minHeight: 78,
           gap: 18,
         }}
       >
-        {/* الهوية ديال الجمعية */}
         <Link
           to={admin ? "/admin" : "/inscription"}
+          aria-label="جمعية جسور لتنمية النقل المدرسي بالتمسية"
           style={{
-            textDecoration: "none",
-            color: "#0f766e",
             display: "flex",
             alignItems: "center",
-            gap: 14,
+            gap: 12,
+            textDecoration: "none",
+            color: "#17202a",
             minWidth: 0,
           }}
         >
-          {/* اللوغو */}
-          <div
+          <img
+            src="/logo-jossour-mark.jpg"
+            alt="شعار جمعية جسور"
             style={{
-              width: 78,
+              width: 58,
               height: 58,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              objectFit: "contain",
+              borderRadius: 12,
               flexShrink: 0,
-              padding: 3,
+              background: "#fff",
             }}
-          >
-            <img
-              src="/logo-jossour-mark.jpg"
-              alt="شعار جمعية جسور"
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                objectPosition: "center",
-                display: "block",
-              }}
-            />
-          </div>
+          />
 
-          {/* الكتابة تبقى كما هي */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              minWidth: 0,
-            }}
-          >
+          <div style={{ minWidth: 0 }}>
             <div
               style={{
+                color: "#0f766e",
                 fontWeight: 900,
                 fontSize: 16,
                 lineHeight: 1.25,
-                color: "#0f766e",
               }}
             >
               جمعية جسور لتنمية النقل المدرسي بالتمسية
             </div>
 
-            <span
+            <div
               style={{
-                fontSize: 11,
-                color: "#64748b",
-                lineHeight: 1.4,
                 marginTop: 4,
-                whiteSpace: "nowrap",
+                color: "#64748b",
+                fontSize: 11,
+                lineHeight: 1.3,
               }}
             >
               Association Jossour pour le Développement du Transport Scolaire à Temsia
-            </span>
+            </div>
           </div>
         </Link>
 
-        {/* زر الإدارة */}
         {admin ? (
           <Link
             className="btn btn-secondary"
             to="/inscription"
             style={{
               textDecoration: "none",
-              fontWeight: 800,
               whiteSpace: "nowrap",
+              fontWeight: 800,
             }}
           >
             صفحة التسجيل
           </Link>
         ) : (
-          <Link
-            className="btn btn-ghost"
-            to="/admin/login"
+          <div
             style={{
-              textDecoration: "none",
-              fontWeight: 800,
-              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+              justifyContent: "flex-start",
             }}
           >
-            الإدارة
-          </Link>
+            <Link
+              className="btn btn-ghost"
+              to="/status"
+              style={{
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                fontWeight: 800,
+              }}
+            >
+              تتبع ملفي
+            </Link>
+
+            <Link
+              className="btn btn-ghost"
+              to="/admin/login"
+              style={{
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                fontWeight: 800,
+              }}
+            >
+              الإدارة
+            </Link>
+          </div>
         )}
       </div>
 
       <style>{`
         @media (max-width: 700px) {
           header .container {
-            min-height: 70px !important;
+            min-height: 72px !important;
             gap: 10px !important;
           }
 
-          header .container > a:first-child {
-            gap: 10px !important;
+          header img {
+            width: 48px !important;
+            height: 48px !important;
           }
 
-          header .container > a:first-child > div:first-child {
-            width: 66px !important;
-            height: 52px !important;
+          header .container > a:first-child > div:last-child div:first-child {
+            font-size: 14px !important;
           }
 
-          header .container > a:first-child > div:last-child > div:first-child {
-            font-size: 13px !important;
+          header .container > a:first-child > div:last-child div:last-child {
+            display: none !important;
           }
 
-          header .container > a:first-child > div:last-child > span {
-            font-size: 9px !important;
+          header .container > div:last-child {
+            gap: 6px !important;
+          }
+
+          header .container > div:last-child .btn {
+            padding: 9px 10px !important;
+            font-size: 12px !important;
           }
         }
       `}</style>

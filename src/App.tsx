@@ -6,6 +6,7 @@ import Success from "./pages/Success";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import BeneficiaryDetails from "./pages/BeneficiaryDetails";
+import ApplicationStatus from "./pages/ApplicationStatus";
 import { useAuth } from "./lib/auth";
 import { supabase } from "./lib/supabase";
 
@@ -27,14 +28,10 @@ function Protected({ children }: { children: ReactNode }) {
       setIsAdmin(!error && data === true);
       setCheckingAdmin(false);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [session, loading]);
 
   if (loading || checkingAdmin) return <div style={{ padding: 40, textAlign: "center" }}>جاري التحميل...</div>;
-  // A valid Supabase Auth session is not enough — it also has to belong to admin_users.
-  // Without this check, any authenticated (non-admin) account could open the dashboard shell.
   if (!session || !isAdmin) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 }
@@ -45,6 +42,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/inscription" replace />} />
       <Route path="/inscription" element={<Registration />} />
       <Route path="/success/:number" element={<Success />} />
+      <Route path="/status" element={<ApplicationStatus />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<Protected><AdminDashboard /></Protected>} />
       <Route path="/admin/beneficiary/:id" element={<Protected><BeneficiaryDetails /></Protected>} />

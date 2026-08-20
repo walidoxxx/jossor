@@ -17,10 +17,10 @@ const BUS_CAPACITIES: Record<string, number> = {
 const BUS_NUMBERS = Object.keys(BUS_CAPACITIES);
 type FamilyRow = Family & { beneficiaries: Beneficiary[] };
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
-type DashboardTab = "overview" | "families" | "lines";
+type DashboardTab = "overview" | "families" | "lines" | "reports";
 
 function familyLabel(v: FamilyStatus) {
-  return v === "normal" ? "عادية" : v === "siblings" ? "إخوة" : "يتيم";
+  return v === "normal" ? "فرد" : v === "siblings" ? "إخوة" : "يتم";
 }
 
 function statusLabel(v: Family["status"]) {
@@ -215,6 +215,10 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openLine, setOpenLine] = useState<string | null>(null);
+  const [schoolFilter, setSchoolFilter] = useState("all");
+  const [busFilter, setBusFilter] = useState("all");
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [familyStatusFilter, setFamilyStatusFilter] = useState("all");
 
   const load = async () => {
     setLoading(true);
@@ -249,12 +253,16 @@ export default function AdminDashboard() {
   // في حالتي "في الانتظار" و"مرفوضة" نعرض للعامل الإداري
   // صفحة "الطلبات" فقط، ونخفي "الرئيسية" و"الخطوط".
   useEffect(() => {
-    if (status === "pending" || status === "rejected") {
+    if (status !== "all" && tab === "reports") {
       setTab("families");
     }
-  }, [status]);
 
-  const canShowOverviewAndLines =
+    if (status !== "all" && tab === "overview") {
+      setTab("families");
+    }
+  }, [status, tab]);
+
+  const canShowLines =
     status === "all" || status === "approved";
 
   const counts = useMemo(
@@ -267,11 +275,33 @@ export default function AdminDashboard() {
     [families],
   );
 
+  const schoolOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        families.flatMap((family) => family.beneficiaries.map((child) => child.school).filter(Boolean)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "ar"));
+  }, [families]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
 
     return families.filter((family) => {
       if (status !== "all" && family.status !== status) return false;
+      if (familyStatusFilter !== "all" && family.family_status !== familyStatusFilter) return false;
+
+      const matchesChildren = family.beneficiaries.some((child) => {
+        if (schoolFilter !== "all" && child.school !== schoolFilter) return false;
+        if (busFilter !== "all" && child.bus_number !== busFilter) return false;
+        if (genderFilter !== "all" && child.gender !== genderFilter) return false;
+        return true;
+      });
+
+      const hasChildFilters =
+        schoolFilter !== "all" || busFilter !== "all" || genderFilter !== "all";
+
+      if (hasChildFilters && !matchesChildren) return false;
+
       if (!q) return true;
 
       const hay = [
@@ -289,12 +319,49 @@ export default function AdminDashboard() {
           b.bus_number,
           b.bus_stop_number,
           b.registration_number,
+          b.gender,
         ]),
       ];
 
       return hay.some((value) => String(value ?? "").toLowerCase().includes(q));
     });
-  }, [families, search, status]);
+  }, [families, search, status, schoolFilter, busFilter, genderFilter, familyStatusFilter]);
+
+  const reportData = useMemo(() => {
+    const beneficiaries = families.flatMap((family) => family.beneficiaries);
+    const approvedFamilies = families.filter((family) => family.status === "approved");
+    const approvedBeneficiaries = beneficiaries.filter(
+      (child) => child.status === "approved" && child.line_status === "accepted",
+    );
+
+    const countBy = <T,>(items: T[], key: (item: T) => string) => {
+      const map = new Map<string, number>();
+      for (const item of items) {
+        const value = key(item) || "غير محدد";
+        map.set(value, (map.get(value) || 0) + 1);
+      }
+      return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    };
+
+    return {
+      families: families.length,
+      beneficiaries: beneficiaries.length,
+      male: beneficiaries.filter((child) => child.gender === "ذكر").length,
+      female: beneficiaries.filter((child) => child.gender === "أنثى").length,
+      individual: families.filter((family) => family.family_status === "normal").length,
+      siblings: families.filter((family) => family.family_status === "siblings").length,
+      orphan: families.filter((family) => family.family_status === "orphan").length,
+      approvedFamilies: approvedFamilies.length,
+      acceptedBeneficiaries: approvedBeneficiaries.length,
+      waitingBeneficiaries: beneficiaries.filter((child) => child.status === "approved" && child.line_status === "waiting").length,
+      bySchool: countBy(beneficiaries, (child) => child.school),
+      byBus: BUS_NUMBERS.map((line) => {
+        const accepted = approvedBeneficiaries.filter((child) => child.bus_number === line).length;
+        const waiting = beneficiaries.filter((child) => child.status === "approved" && child.line_status === "waiting" && child.bus_number === line).length;
+        return { line, accepted, waiting, capacity: BUS_CAPACITIES[line], free: Math.max(BUS_CAPACITIES[line] - accepted, 0) };
+      }),
+    };
+  }, [families]);
 
   const lineBoard = useMemo(() => {
     return BUS_NUMBERS.map((line) => {
@@ -459,7 +526,7 @@ export default function AdminDashboard() {
       </section>
 
       <nav className="dashboard-nav">
-        {canShowOverviewAndLines && (
+        {status === "all" && (
           <button
             className={tab === "overview" ? "selected" : ""}
             onClick={() => setTab("overview")}
@@ -475,7 +542,7 @@ export default function AdminDashboard() {
           📋 الطلبات
         </button>
 
-        {canShowOverviewAndLines && (
+        {canShowLines && (
           <button
             className={tab === "lines" ? "selected" : ""}
             onClick={() => setTab("lines")}
@@ -483,9 +550,18 @@ export default function AdminDashboard() {
             🚌 الخطوط
           </button>
         )}
+
+        {status === "all" && (
+          <button
+            className={tab === "reports" ? "selected" : ""}
+            onClick={() => setTab("reports")}
+          >
+            📊 التقارير
+          </button>
+        )}
       </nav>
 
-      {canShowOverviewAndLines && tab === "overview" && (
+      {status === "all" && tab === "overview" && (
         <section className="overview-grid">
           <div className="dashboard-card">
             <div className="card-heading"><div><h2>ملخص سريع</h2><p>نظرة عامة على الملفات الحالية</p></div></div>
@@ -549,6 +625,45 @@ export default function AdminDashboard() {
             ))}
           </div>
 
+          <div className="advanced-filters">
+            <select value={schoolFilter} onChange={(e) => setSchoolFilter(e.target.value)}>
+              <option value="all">جميع المؤسسات</option>
+              {schoolOptions.map((school) => <option key={school} value={school}>{school}</option>)}
+            </select>
+
+            <select value={busFilter} onChange={(e) => setBusFilter(e.target.value)}>
+              <option value="all">جميع الحافلات</option>
+              {BUS_NUMBERS.map((line) => <option key={line} value={line}>الحافلة {line}</option>)}
+            </select>
+
+            <select value={genderFilter} onChange={(e) => setGenderFilter(e.target.value)}>
+              <option value="all">كل الجنس</option>
+              <option value="ذكر">ذكور</option>
+              <option value="أنثى">إناث</option>
+            </select>
+
+            <select value={familyStatusFilter} onChange={(e) => setFamilyStatusFilter(e.target.value)}>
+              <option value="all">كل الحالات العائلية</option>
+              <option value="normal">فرد</option>
+              <option value="siblings">إخوة</option>
+              <option value="orphan">يتم</option>
+            </select>
+
+            {(schoolFilter !== "all" || busFilter !== "all" || genderFilter !== "all" || familyStatusFilter !== "all") && (
+              <button
+                className="filter reset-filter"
+                onClick={() => {
+                  setSchoolFilter("all");
+                  setBusFilter("all");
+                  setGenderFilter("all");
+                  setFamilyStatusFilter("all");
+                }}
+              >
+                إعادة التصفية
+              </button>
+            )}
+          </div>
+
           <div className="family-list">
             {filtered.map((family) => (
               <article key={family.id} className="family-card">
@@ -598,7 +713,65 @@ export default function AdminDashboard() {
         </section>
       )}
 
-      {canShowOverviewAndLines && tab === "lines" && (
+      {status === "all" && tab === "reports" && (
+        <section className="reports-shell">
+          <div className="reports-header dashboard-card">
+            <div>
+              <h2>📊 التقارير والإحصائيات</h2>
+              <p>ملخص إداري مباشر مبني على البيانات الحالية.</p>
+            </div>
+            <button className="small-link" onClick={() => void load()}>↻ تحديث الأرقام</button>
+          </div>
+
+          <div className="report-stat-grid">
+            <div className="report-stat"><span>العائلات</span><b>{reportData.families}</b></div>
+            <div className="report-stat"><span>المستفيدون</span><b>{reportData.beneficiaries}</b></div>
+            <div className="report-stat"><span>الذكور</span><b>{reportData.male}</b></div>
+            <div className="report-stat"><span>الإناث</span><b>{reportData.female}</b></div>
+            <div className="report-stat"><span>فرد</span><b>{reportData.individual}</b></div>
+            <div className="report-stat"><span>إخوة</span><b>{reportData.siblings}</b></div>
+            <div className="report-stat"><span>يتم</span><b>{reportData.orphan}</b></div>
+            <div className="report-stat"><span>مقبولون فعلياً</span><b>{reportData.acceptedBeneficiaries}</b></div>
+            <div className="report-stat"><span>في الانتظار</span><b>{reportData.waitingBeneficiaries}</b></div>
+          </div>
+
+          <div className="report-grid">
+            <div className="dashboard-card">
+              <div className="card-heading"><div><h2>حسب المؤسسة</h2><p>عدد المستفيدين المسجلين في كل مؤسسة</p></div></div>
+              <div className="report-list">
+                {reportData.bySchool.map(([school, count]) => {
+                  const max = Math.max(reportData.bySchool[0]?.[1] || 1, 1);
+                  return (
+                    <div key={school} className="report-row">
+                      <div className="report-row-head"><span>{school}</span><b>{count}</b></div>
+                      <div className="report-bar"><span style={{ width: `${(count / max) * 100}%` }} /></div>
+                    </div>
+                  );
+                })}
+                {!reportData.bySchool.length && <div className="empty small">لا توجد بيانات.</div>}
+              </div>
+            </div>
+
+            <div className="dashboard-card">
+              <div className="card-heading"><div><h2>توزيع الحافلات</h2><p>المقاعد المقبولة والانتظار والطاقة المتبقية</p></div></div>
+              <div className="report-list">
+                {reportData.byBus.map((item) => {
+                  const usage = item.capacity ? Math.min((item.accepted / item.capacity) * 100, 100) : 0;
+                  return (
+                    <div key={item.line} className="report-row">
+                      <div className="report-row-head"><span>الحافلة {item.line}</span><b>{item.accepted}/{item.capacity}</b></div>
+                      <div className="report-bar"><span style={{ width: `${usage}%` }} /></div>
+                      <small className="report-meta">{item.waiting} انتظار • {item.free} مقعد متبقي</small>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {canShowLines && tab === "lines" && (
         <section className="dashboard-card">
           <div className="card-heading"><div><h2>إدارة الخطوط</h2><p>كل خط بوحدو، والمقبولين والانتظار منفصلين</p></div></div>
 
@@ -677,9 +850,21 @@ function DashboardStyles() {
       .card-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px}.card-heading h2{margin:0;font-size:20px}.card-heading p{margin:4px 0 0;color:#64748b;font-size:13px}.small-link{border:0;background:#ecfdf5;color:#0f766e;border-radius:8px;padding:8px 11px;font-family:inherit;font-weight:800;cursor:pointer}.overview-list{display:grid;gap:10px}.overview-list div{background:#f8fafc;border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between}.overview-list b{font-size:18px}.mini-lines{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.mini-line{border:1px solid #e4eaee;background:#f8fafc;border-radius:10px;padding:11px;text-align:right;font-family:inherit;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:3px 10px}.mini-line span:first-child{font-weight:800}.mini-line b{grid-row:span 2}.mini-line em{font-style:normal;color:#c2410c;font-size:12px}.recent-list{display:grid;gap:8px}.recent-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;background:#f8fafc;border-radius:10px}.recent-item b{display:block}.recent-item span{display:block;color:#64748b;font-size:12px;margin-top:3px}
       .status-pill{display:inline-flex;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:900}.status-pill.ok{background:#dcfce7;color:#15803d}.status-pill.wait{background:#ffedd5;color:#c2410c}.status-pill.danger{background:#fee2e2;color:#b91c1c}
       .result-count{background:#ecfdf5;color:#0f766e;border-radius:999px;padding:7px 12px;font-weight:900}.search-wrap{display:flex;align-items:center;gap:10px;background:#f8fafc;border:1px solid #dfe6eb;border-radius:11px;padding:0 12px;margin-bottom:12px}.search-wrap span{font-size:24px;color:#0f766e}.search-wrap input{flex:1;border:0;outline:none;background:transparent;padding:14px 0;font-family:inherit;font-size:15px}.search-wrap button{border:0;background:transparent;font-size:22px;color:#64748b;cursor:pointer}.filter-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px}.filter{border:1px solid #e2e8f0;background:#fff;border-radius:999px;padding:8px 13px;font-family:inherit;font-weight:800;color:#64748b;cursor:pointer}.filter.active{background:#0f766e;color:#fff;border-color:#0f766e}.family-list{display:grid;gap:12px}.family-card{border:1px solid #e3e8ed;border-radius:13px;overflow:hidden;background:#fff}.family-main{padding:15px}.family-title-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.family-title-row h3{margin:0;font-size:18px}.family-title-row p{margin:4px 0 0;color:#64748b;font-size:12px}.family-info-row{display:flex;flex-wrap:wrap;gap:10px;color:#475569;font-size:13px;margin-top:9px}.document-note{background:#fff7ed;color:#9a3412;border-radius:9px;padding:8px 10px;font-size:12px;margin-top:10px}.children-list{display:grid;gap:7px;margin-top:12px}.child-row{background:#f8fafc;border-radius:9px;padding:9px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px}.child-row b{display:block}.child-row span{display:block;color:#64748b;font-size:12px;margin-top:3px}.view-btn{background:#fff;border:1px solid #d6dee5;color:#0f766e;border-radius:8px;padding:7px 10px;text-decoration:none;font-weight:800;font-size:12px;white-space:nowrap}.family-actions{border-top:1px solid #edf1f4;background:#fbfcfd;padding:10px 15px;display:flex;flex-wrap:wrap;gap:7px}.action{border:0;border-radius:8px;padding:8px 11px;font-family:inherit;font-weight:800;cursor:pointer}.action.wait{background:#fff7ed;color:#c2410c}.action.ok{background:#f0fdf4;color:#15803d}.action.danger,.action.delete{background:#fef2f2;color:#b91c1c}.action.dark{background:#0f766e;color:#fff}.action:disabled{opacity:.55;cursor:not-allowed}
+      .advanced-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:-2px 0 16px}
+      .advanced-filters select{width:100%;border:1px solid #dfe6eb;background:#fff;border-radius:10px;padding:11px 12px;font-family:inherit;color:#334155;outline:none}
+      .advanced-filters select:focus{border-color:#0f766e}
+      .reset-filter{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
+      .reports-shell{max-width:1180px;margin:0 auto;display:grid;gap:16px}
+      .reports-header{display:flex;justify-content:space-between;align-items:center;gap:16px}
+      .reports-header h2{margin:0;font-size:21px}.reports-header p{margin:4px 0 0;color:#64748b;font-size:13px}
+      .report-stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+      .report-stat{background:#fff;border:1px solid #e5eaee;border-radius:14px;padding:15px;box-shadow:0 4px 14px rgba(15,23,42,.03)}
+      .report-stat span{display:block;color:#64748b;font-size:12px;font-weight:700}.report-stat b{display:block;margin-top:7px;color:#0f766e;font-size:25px}
+      .report-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+      .report-list{display:grid;gap:12px}.report-row-head{display:flex;justify-content:space-between;gap:10px;font-size:13px}.report-row-head span{color:#334155}.report-row-head b{color:#0f766e}.report-bar{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:6px}.report-bar span{display:block;height:100%;background:#0f766e;border-radius:999px}.report-meta{display:block;color:#64748b;font-size:11px;margin-top:4px}
       .lines-grid{display:grid;gap:10px}.line-card{border:1px solid #e3e8ed;border-radius:12px;overflow:hidden}.line-head{width:100%;border:0;background:#fff;padding:14px 15px;display:flex;justify-content:space-between;align-items:center;gap:15px;text-align:right;font-family:inherit;cursor:pointer}.line-head>div{display:flex;align-items:center;gap:12px}.line-head strong{font-size:16px}.line-head span{color:#64748b;font-size:12px}.line-head b{color:#15803d}.line-head em{color:#c2410c;font-style:normal;font-size:12px}.line-card.open .line-head{background:#f8fafc}.line-content{border-top:1px solid #e9eef2;padding:13px}.line-toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}.line-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}.line-list{border-radius:10px;padding:11px}.accepted-list{background:#f0fdf4}.waiting-list{background:#fff7ed}.list-title{display:flex;justify-content:space-between;align-items:center;font-weight:900;margin-bottom:8px}.ok-title{color:#15803d}.wait-title{color:#c2410c}.line-person{background:#fff;border-radius:8px;padding:9px;margin-top:7px;display:flex;justify-content:space-between;align-items:center;gap:8px}.line-person b{display:block;font-size:12px}.line-person span{display:block;color:#64748b;font-size:11px;margin-top:3px}.link-btn{border:0;background:transparent;color:#0f766e;font-family:inherit;font-weight:800;font-size:11px;cursor:pointer;white-space:nowrap}.ok-link{background:#ecfdf5;border-radius:7px;padding:6px 8px}.loading-card,.empty{text-align:center;background:#fff;border:1px solid #e5eaee;border-radius:15px;padding:45px;color:#64748b;max-width:1180px;margin:40px auto}.empty.small{padding:15px;background:transparent;border:0}
-      @media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr)}.overview-grid{grid-template-columns:1fr}.dashboard-card.wide{grid-column:auto}.line-columns{grid-template-columns:1fr}.admin-topbar{margin:0 12px 18px}.stats-row,.dashboard-nav,.overview-grid,.dashboard-card,.admin-alert{margin-left:12px;margin-right:12px}.admin-shell{padding-top:12px}}
-      @media(max-width:600px){.stats-row{grid-template-columns:1fr 1fr}.dashboard-nav button{font-size:12px}.family-title-row{flex-direction:column}.child-row{align-items:flex-start;flex-direction:column}.family-actions{display:grid;grid-template-columns:1fr 1fr}.admin-topbar{align-items:flex-start;flex-direction:column}.mini-lines{grid-template-columns:1fr}}
+      @media(max-width:900px){.report-stat-grid{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}.advanced-filters{grid-template-columns:1fr 1fr}.stats-row{grid-template-columns:repeat(2,1fr)}.overview-grid{grid-template-columns:1fr}.dashboard-card.wide{grid-column:auto}.line-columns{grid-template-columns:1fr}.admin-topbar{margin:0 12px 18px}.stats-row,.dashboard-nav,.overview-grid,.dashboard-card,.admin-alert{margin-left:12px;margin-right:12px}.admin-shell{padding-top:12px}}
+      @media(max-width:600px){.report-stat-grid{grid-template-columns:1fr 1fr}.advanced-filters{grid-template-columns:1fr}.reports-header{align-items:flex-start;flex-direction:column}.stats-row{grid-template-columns:1fr 1fr}.dashboard-nav button{font-size:12px}.family-title-row{flex-direction:column}.child-row{align-items:flex-start;flex-direction:column}.family-actions{display:grid;grid-template-columns:1fr 1fr}.admin-topbar{align-items:flex-start;flex-direction:column}.mini-lines{grid-template-columns:1fr}}
     `}</style>
   );
 }
