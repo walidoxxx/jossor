@@ -505,7 +505,15 @@ export default function AdminDashboard() {
           <h1>لوحة الإدارة</h1>
           <p>كل ما تحتاجه الإدارة في مكان واحد</p>
         </div>
-        <button className="admin-refresh" onClick={() => void load()}>↻ تحديث</button>
+
+        <div className="admin-top-actions">
+          <Link to="/" className="admin-home-link">
+            🏠 الرئيسية
+          </Link>
+          <button className="admin-refresh" onClick={() => void load()}>
+            ↻ تحديث
+          </button>
+        </div>
       </header>
 
       {error && <div className="admin-alert">{error}</div>}
@@ -836,6 +844,9 @@ function DashboardStyles() {
       .admin-brand{color:#0f766e;font-size:13px;font-weight:800}
       .admin-topbar h1{margin:4px 0;font-size:28px}
       .admin-topbar p{margin:0;color:#64748b}
+      .admin-top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      .admin-home-link{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:1px solid #dce6e1;background:#f8faf9;color:#0f766e;padding:11px 14px;border-radius:10px;font-family:inherit;font-weight:800}
+      .admin-home-link:hover{background:#ecfdf5}
       .admin-refresh{border:0;background:#0f766e;color:#fff;padding:11px 16px;border-radius:10px;font-family:inherit;cursor:pointer;font-weight:800}
       .admin-alert{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3;padding:12px 14px;border-radius:12px;margin-bottom:18px}
       .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
