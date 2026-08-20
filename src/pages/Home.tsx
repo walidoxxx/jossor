@@ -725,7 +725,7 @@ export default function Home() {
             title="فضاء الإدارة"
             description="ولوج فضاء الإدارة لتدبير الطلبات، المستفيدين، الخطوط، التقارير والوثائق."
             to="/admin/login"
-            button="🔐 الدخول إلى الإدارة"
+            button="🔐 الولوج إلى الإدارة"
           />
         </div>
       </section>
@@ -743,16 +743,8 @@ export default function Home() {
           <div className="home-trust-item">
             <div className="home-trust-icon">⏱️</div>
             <div>
-              <div className="home-trust-title">تتبع في الوقت الحقيقي</div>
-              <div className="home-trust-text">تتبع حالة طلبك لحظة بلحظة من البداية إلى النهاية.</div>
-            </div>
-          </div>
-
-          <div className="home-trust-item">
-            <div className="home-trust-icon">📄</div>
-            <div>
-              <div className="home-trust-title">وثائق رسمية</div>
-              <div className="home-trust-text">طباعة الوثائق الرسمية المعتمدة من الجمعية.</div>
+              <div className="home-trust-title">معالجة المعطيات</div>
+              <div className="home-trust-text">معالجة معطيات الطلبات بعناية وتنظيم، مع احترام خصوصية المستفيدين.</div>
             </div>
           </div>
 
