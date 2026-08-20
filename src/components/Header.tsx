@@ -34,8 +34,9 @@ export default function Header({ admin = false }: HeaderProps) {
         setCompact(true);
       }
 
-      // Going up: restore full header.
-      if (delta < 0) {
+      // Restore the full header ONLY when we reach the very top.
+      // Scrolling upward in the middle of the page keeps the compact header.
+      if (y <= 10) {
         setCompact(false);
       }
 

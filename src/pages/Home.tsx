@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 
 const GREEN = "#087a52";
 const GREEN_DARK = "#075f41";
@@ -34,8 +35,65 @@ function ServiceCard({
 }
 
 export default function Home() {
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+
+    const update = () => {
+      ticking = false;
+
+      const y = window.scrollY;
+      const isMobile = window.matchMedia("(max-width: 700px)").matches;
+
+      if (!isMobile) {
+        setCompact(false);
+        lastY = y;
+        return;
+      }
+
+      const delta = y - lastY;
+
+      if (Math.abs(delta) < 8) return;
+
+      if (delta > 0 && y > 80) {
+        setCompact(true);
+      }
+
+      // Restore only when the user reaches the very top of the page.
+      if (y <= 10) {
+        setCompact(false);
+      }
+
+      lastY = y;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    };
+
+    const onResize = () => {
+      if (!window.matchMedia("(max-width: 700px)").matches) {
+        setCompact(false);
+      }
+      lastY = window.scrollY;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
   return (
-    <main className="home-page" dir="rtl">
+    <main className={`home-page ${compact ? "home-page-compact" : ""}`} dir="rtl">
       <style>{`
         .home-page{
           min-height:100vh;
@@ -50,6 +108,16 @@ export default function Home() {
           position:sticky;
           top:0;
           z-index:30;
+        }
+
+        .home-topbar-inner{
+          transition:min-height .22s ease, padding .22s ease;
+        }
+
+        .home-brand-logo,
+        .home-brand-text,
+        .home-top-actions{
+          transition:opacity .18s ease, visibility .18s ease, transform .18s ease;
         }
 
         .home-topbar-inner{
@@ -420,6 +488,37 @@ export default function Home() {
           .home-trust-item:nth-child(even){
             border-right:1px solid #d8e9df;
           }
+
+          @media (max-width:700px){
+            .home-topbar-compact .home-topbar-inner{
+              min-height:64px;
+              height:64px;
+              padding:8px 12px;
+              justify-content:center;
+              gap:0;
+            }
+
+            .home-topbar-compact .home-brand{
+              width:auto;
+              flex-direction:column;
+              justify-content:center;
+              gap:0;
+            }
+
+            .home-topbar-compact .home-brand-logo{
+              width:48px;
+              height:48px;
+            }
+
+            .home-topbar-compact .home-brand-text,
+            .home-topbar-compact .home-top-actions{
+              position:absolute;
+              opacity:0;
+              visibility:hidden;
+              pointer-events:none;
+              transform:translateY(-6px);
+            }
+          }
         }
 
         @media (max-width:620px){
@@ -467,10 +566,20 @@ export default function Home() {
             border-right:0;
             border-top:1px solid #d8e9df;
           }
+
+          .home-topbar-compact .home-topbar-inner{
+            height:60px;
+            min-height:60px;
+          }
+
+          .home-topbar-compact .home-brand-logo{
+            width:46px;
+            height:46px;
+          }
         }
       `}</style>
 
-      <header className="home-topbar">
+      <header className={`home-topbar ${compact ? "home-topbar-compact" : ""}`}>
         <div className="home-topbar-inner">
           <Link to="/inscription" className="home-brand">
             <img
