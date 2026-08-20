@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, PHOTO_BUCKET } from "../lib/supabase";
 import { validateCIN, validateImage, validateMoroccanPhone } from "../lib/validation";
@@ -112,13 +112,36 @@ export default function RegistrationForm() {
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [registrationChecking, setRegistrationChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    supabase.rpc("get_registration_status").then(({ data, error: statusError }) => {
+      if (cancelled) return;
+
+      if (!statusError && typeof data === "boolean") {
+        setRegistrationOpen(data);
+      } else {
+        // Keep the form usable if the status-check RPC is temporarily unavailable.
+        setRegistrationOpen(true);
+      }
+
+      setRegistrationChecking(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const familyLabel =
     guardian.family_status === "normal"
-      ? "فرد"
+      ? "عادية"
       : guardian.family_status === "siblings"
         ? "إخوة"
-        : "يتم";
+        : "يتيم";
 
   const setGuardianValue = <K extends keyof GuardianForm>(
     key: K,
@@ -203,7 +226,7 @@ export default function RegistrationForm() {
         return setError("المرجو تحديد صلة القرابة مع المستفيد.");
       }
       if (guardian.family_status === "orphan" && !guardian.death_certificate) {
-        return setError("المرجو رفع شهادة الوفاة في حالة يتم.");
+        return setError("المرجو رفع شهادة الوفاة في حالة يتيم.");
       }
       if (guardian.family_status === "siblings" && guardian.children_count < 2) {
         return setError("اختر عدد الأبناء: 2 أو 3.");
@@ -256,6 +279,16 @@ export default function RegistrationForm() {
     setBusy(true);
 
     try {
+      const { data: isOpen, error: statusError } = await supabase.rpc("get_registration_status");
+
+      if (statusError) {
+        throw statusError;
+      }
+
+      if (isOpen !== true) {
+        throw new Error("التسجيل مغلق حالياً. انتهت فترة التسجيل.");
+      }
+
       const familyId = crypto.randomUUID();
       const childPayload: Array<Record<string, unknown>> = [];
 
@@ -397,6 +430,96 @@ export default function RegistrationForm() {
     }
   };
 
+  if (registrationChecking) {
+    return (
+      <div className="card" dir="rtl" style={{ padding: 34, textAlign: "center" }}>
+        <div style={{ fontSize: 42, marginBottom: 10 }}>⏳</div>
+        <h2 style={{ margin: "0 0 8px" }}>جاري التحقق من حالة التسجيل</h2>
+        <p className="muted" style={{ margin: 0 }}>
+          المرجو الانتظار قليلاً...
+        </p>
+      </div>
+    );
+  }
+
+  if (!registrationOpen) {
+    return (
+      <div className="card" dir="rtl" style={{ padding: 34, textAlign: "center" }}>
+        <div
+          style={{
+            width: 74,
+            height: 74,
+            margin: "0 auto 16px",
+            borderRadius: "50%",
+            background: "#fff7ed",
+            color: "#c2410c",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 34,
+          }}
+        >
+          🔒
+        </div>
+
+        <h2 style={{ margin: "0 0 10px", color: "#0f172a" }}>
+          التسجيل مغلق حالياً
+        </h2>
+
+        <p
+          style={{
+            maxWidth: 560,
+            margin: "0 auto 20px",
+            color: "#64748b",
+            lineHeight: 1.9,
+          }}
+        >
+          نعتذر، لقد انتهت فترة التسجيل الخاصة بالنقل المدرسي.
+          لا يمكن حالياً إيداع طلبات جديدة عبر المنصة.
+        </p>
+
+        <div
+          style={{
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            padding: 14,
+            color: "#475569",
+            fontSize: 13,
+            marginBottom: 18,
+          }}
+        >
+          سيتم الإعلان عن موعد فتح التسجيل من طرف جمعية جسور.
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: "center",
+          }}
+        >
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => navigate("/status")}
+          >
+            🔎 تتبع ملفي
+          </button>
+
+          <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => navigate("/")}
+          >
+            🏠 العودة للرئيسية
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="card" style={{ padding: 24 }} dir="rtl">
       <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
@@ -498,7 +621,7 @@ export default function RegistrationForm() {
             <div style={{ fontWeight: 800, marginBottom: 10 }}>الحالة</div>
 
             <div className="grid-3">
-              {([ ["normal", "فرد"], ["siblings", "إخوة"], ["orphan", "يتم"] ] as [FamilyStatus, string][]).map(([value, label]) => (
+              {([ ["normal", "عادية"], ["siblings", "إخوة"], ["orphan", "يتيم"] ] as [FamilyStatus, string][]).map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
