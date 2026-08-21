@@ -56,12 +56,12 @@ export default function BeneficiaryDetails() {
     <main className="container" style={{ padding: "30px 0 60px" }} dir="rtl">
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <div>
-          <div className="muted">ملف العائلة #{family?.registration_number || "—"}</div>
+          <div className="muted">ملف الأسرة #{family?.registration_number || "—"}</div>
           <h1 style={{ margin: 0 }}>{child.full_name}</h1>
           <div className="muted">المستفيد رقم {child.child_order}</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => printBeneficiaryPdf(siblings)}>طباعة ملفات العائلة</button>
+          <button className="btn btn-primary" onClick={() => printBeneficiaryPdf(siblings)}>طباعة ملفات الأسرة</button>
           <Link className="btn btn-ghost" to="/admin">رجوع</Link>
         </div>
       </div>
@@ -82,7 +82,6 @@ export default function BeneficiaryDetails() {
             ["العنوان", child.address],
             ["رقم مسار", child.route_number],
             ["رقم الحافلة المستعملة", child.bus_number],
-            ["حالة الخط", child.line_status === "accepted" ? "مقبول داخل الطاقة" : "لائحة الانتظار"],
             ["رقم محطة الوقوف", child.bus_stop_number],
           ]}
         />
@@ -96,7 +95,7 @@ export default function BeneficiaryDetails() {
             ["حامل البطاقة", child.guardian_id_type],
             ["صلة القرابة", child.guardian_id_type === "آخر" ? child.guardian_relation : ""],
             ["CIN", child.guardian_cin],
-            ["الحالة العائلية", familyLabel],
+            ["الحالة الأسرية", familyLabel],
           ]}
         />
 

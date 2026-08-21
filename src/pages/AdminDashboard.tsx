@@ -15,6 +15,16 @@ const BUS_CAPACITIES: Record<string, number> = {
 };
 
 const BUS_NUMBERS = Object.keys(BUS_CAPACITIES);
+
+const KNOWN_SCHOOLS = [
+  "الثانوية التأهيلية عبد الله الشفشاوني",
+  "الثانوية التأهيلية ابن زيدون",
+  "الثانوية التأهيلية المهدي المنجرة",
+  "الثانوية التأهيلية يوسف بن تاشفين",
+  "الثانوية الإعدادية الإمام الجزولي",
+  "الثانوية التأهيلية المجد",
+] as const;
+
 type FamilyRow = Family & { beneficiaries: Beneficiary[] };
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 type DashboardTab = "overview" | "families" | "lines" | "reports";
@@ -286,11 +296,12 @@ export default function AdminDashboard() {
   );
 
   const schoolOptions = useMemo(() => {
-    return Array.from(
-      new Set(
-        families.flatMap((family) => family.beneficiaries.map((child) => child.school).filter(Boolean)),
-      ),
-    ).sort((a, b) => a.localeCompare(b, "ar"));
+    const fromData = families.flatMap((family) =>
+      family.beneficiaries.map((child) => child.school).filter(Boolean),
+    );
+
+    return Array.from(new Set([...KNOWN_SCHOOLS, ...fromData]))
+      .sort((a, b) => a.localeCompare(b, "ar"));
   }, [families]);
 
   const filtered = useMemo(() => {
@@ -810,7 +821,7 @@ export default function AdminDashboard() {
             </select>
 
             <select value={familyStatusFilter} onChange={(e) => setFamilyStatusFilter(e.target.value)}>
-              <option value="all">كل الحالات العائلية</option>
+              <option value="all">كل الحالات الأسرية</option>
               <option value="normal">فرد</option>
               <option value="siblings">إخوة</option>
               <option value="orphan">يتم</option>
@@ -989,9 +1000,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="decision-grid">
-              <div><span>العائلات المقبولة</span><b>{reportData.approvedFamilies}</b></div>
-              <div><span>العائلات في الانتظار</span><b>{reportData.pendingFamilies}</b></div>
-              <div><span>العائلات المرفوضة</span><b>{reportData.rejectedFamilies}</b></div>
+              <div><span>الأسر المقبولة</span><b>{reportData.approvedFamilies}</b></div>
+              <div><span>الأسر في الانتظار</span><b>{reportData.pendingFamilies}</b></div>
+              <div><span>الأسر المرفوضة</span><b>{reportData.rejectedFamilies}</b></div>
               <div><span>مقاعد متبقية في أكثر خط استعمالاً</span><b>{reportData.topBus?.free ?? 0}</b></div>
             </div>
           </div>

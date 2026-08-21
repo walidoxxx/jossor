@@ -49,6 +49,7 @@ const schools = [
   "الثانوية التأهيلية المهدي المنجرة",
   "الثانوية التأهيلية يوسف بن تاشفين",
   "الثانوية الإعدادية الإمام الجزولي",
+  "الثانوية التأهيلية المجد",
 ];
 
 const busCapacities: Record<string, number> = {
@@ -360,7 +361,7 @@ export default function RegistrationForm() {
 
       const result = Array.isArray(data) ? data[0] : data;
       if (!result?.family_id || !result?.family_registration_number) {
-        throw new Error("تعذر إنشاء ملف العائلة.");
+        throw new Error("تعذر إنشاء ملف الأسرة.");
       }
 
       const beneficiaries: Beneficiary[] = children.map((child, index) => ({
@@ -790,7 +791,7 @@ export default function RegistrationForm() {
             <div><b>ولي الأمر:</b> {guardian.name}</div>
             <div><b>الهاتف:</b> {guardian.phone}</div>
             <div><b>البطاقة الوطنية:</b> {guardian.cin}</div>
-            <div><b>الحالة العائلية:</b> {familyLabel}</div>
+            <div><b>الحالة الأسرية:</b> {familyLabel}</div>
             {guardian.id_type === "آخر" && <div><b>صلة القرابة:</b> {guardian.other_relation}</div>}
             <hr />
             {children.map((child, index) => (
@@ -821,5 +822,28 @@ export default function RegistrationForm() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="field"><label>{label}</label>{children}</div>;
+  const required = label.trim().endsWith("*");
+  const cleanLabel = required ? label.trim().slice(0, -1).trimEnd() : label;
+
+  return (
+    <div className="field">
+      <label>
+        {cleanLabel}
+        {required && (
+          <span
+            aria-label="حقل إجباري"
+            title="حقل إجباري"
+            style={{
+              color: "#dc2626",
+              marginRight: 4,
+              fontWeight: 900,
+            }}
+          >
+            *
+          </span>
+        )}
+      </label>
+      {children}
+    </div>
+  );
 }

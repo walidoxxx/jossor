@@ -67,7 +67,7 @@ export default function ApplicationStatus() {
 
         <div className="status-brand">جمعية جسور</div>
         <h1>تتبع حالة الملف</h1>
-        <p className="status-intro">أدخل رقم الملف باش تعرف آخر وضعية للطلب.</p>
+        <p className="status-intro">أدخل رقم الملف لمعرفة آخر وضعية لطلبك.</p>
 
         <form onSubmit={checkStatus} className="status-form">
           <label>رقم الملف</label>

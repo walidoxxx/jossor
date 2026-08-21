@@ -220,7 +220,7 @@ export default function Header({ admin = false }: HeaderProps) {
           .site-actions{
             width:100%;
             display:grid;
-            grid-template-columns:repeat(3,minmax(0,1fr));
+            grid-template-columns:repeat(2,minmax(0,1fr));
             gap:7px;
           }
 
@@ -321,13 +321,9 @@ export default function Header({ admin = false }: HeaderProps) {
             </Link>
           )}
 
-          {admin ? (
+          {admin && (
             <Link to="/inscription" className="site-action primary">
               📝 صفحة التسجيل
-            </Link>
-          ) : (
-            <Link to="/admin/login" className="site-action primary">
-              🔐 الإدارة
             </Link>
           )}
         </nav>
