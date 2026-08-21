@@ -317,6 +317,13 @@ export default function Home() {
           gap:18px;
         }
 
+        .home-services-grid-public{
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          max-width:840px;
+          margin-left:auto;
+          margin-right:auto;
+        }
+
         .home-service-card{
           background:#fff;
           border:1px solid ${BORDER};
@@ -606,9 +613,6 @@ export default function Home() {
               🔎 تتبع ملفي
             </Link>
 
-            <Link to="/admin/login" className="home-top-button">
-              🔐 فضاء الإدارة
-            </Link>
           </div>
         </div>
       </header>
@@ -652,7 +656,7 @@ export default function Home() {
           <p>كل ما تحتاجه للاستفادة من خدمة النقل المدرسي في مكان واحد</p>
         </div>
 
-        <div className="home-services-grid">
+        <div className="home-services-grid home-services-grid-public">
           <ServiceCard
             icon={
               <svg
@@ -703,30 +707,6 @@ export default function Home() {
             button="🔎 تتبع طلبك"
           />
 
-          <ServiceCard
-            icon={
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <rect x="4" y="4" width="16" height="16" rx="3" />
-                <path d="M8 8h8" />
-                <path d="M8 12h6" />
-                <path d="M8 16h4" />
-              </svg>
-            }
-            title="فضاء الإدارة"
-            description="ولوج فضاء الإدارة لتدبير الطلبات، المستفيدين، الخطوط، التقارير والوثائق."
-            to="/admin/login"
-            button="🔐 الولوج إلى الإدارة"
-          />
         </div>
       </section>
 
