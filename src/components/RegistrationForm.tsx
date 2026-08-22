@@ -239,24 +239,26 @@ export default function RegistrationForm() {
       for (let i = 0; i < children.length; i++) {
         const child = children[i];
         if (
-          !child.full_name ||
+          !child.full_name.trim() ||
           !child.education_level ||
+          !child.class_number.trim() ||
           !child.school ||
-          !child.phone ||
+          !child.birth_date ||
+          !child.birth_place.trim() ||
+          !child.phone.trim() ||
           !child.gender ||
-          !child.address ||
-          !child.route_number
+          !child.address.trim() ||
+          !child.route_number.trim() ||
+          !child.photo
         ) {
-          return setError(`المرجو إكمال معلومات المستفيد رقم ${i + 1}.`);
+          return setError(`المرجو إكمال جميع معلومات المستفيد رقم ${i + 1}، بما فيها الصورة الشخصية.`);
         }
         if (!validateMoroccanPhone(child.phone)) {
           return setError(`رقم هاتف المستفيد رقم ${i + 1} غير صحيح.`);
         }
-        if (child.photo) {
-          const imageError = validateImage(child.photo);
-          if (imageError) {
-            return setError(`صورة المستفيد رقم ${i + 1}: ${imageError}`);
-          }
+        const imageError = validateImage(child.photo);
+        if (imageError) {
+          return setError(`صورة المستفيد رقم ${i + 1}: ${imageError}`);
         }
       }
       return setStep(3);
@@ -641,7 +643,7 @@ export default function RegistrationForm() {
 
             {guardian.family_status === "siblings" && (
               <div style={{ marginTop: 16 }} className="field">
-                <label>عدد الأبناء</label>
+                <label>عدد الأبناء <span style={{ color: "#dc2626", fontWeight: 900 }}>*</span></label>
                 <select
                   value={guardian.children_count}
                   onChange={(e) => changeChildrenCount(Number(e.target.value) as 2 | 3)}
@@ -657,6 +659,7 @@ export default function RegistrationForm() {
                 <label>صورة شهادة الوفاة *</label>
                 <input
                   type="file"
+                  required
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={(e) => setGuardianValue("death_certificate", e.target.files?.[0] || null)}
                 />
@@ -693,7 +696,7 @@ export default function RegistrationForm() {
                     </select>
                   </Field>
 
-                  <Field label="رقم القسم">
+                  <Field label="رقم القسم *">
                     <input value={child.class_number} onChange={(e) => updateChild(index, "class_number", e.target.value)} />
                   </Field>
 
@@ -704,11 +707,11 @@ export default function RegistrationForm() {
                     </select>
                   </Field>
 
-                  <Field label="تاريخ الازدياد">
+                  <Field label="تاريخ الازدياد *">
                     <input type="date" value={child.birth_date} onChange={(e) => updateChild(index, "birth_date", e.target.value)} />
                   </Field>
 
-                  <Field label="مكان الازدياد">
+                  <Field label="مكان الازدياد *">
                     <input value={child.birth_place} onChange={(e) => updateChild(index, "birth_place", e.target.value)} />
                   </Field>
 
@@ -733,9 +736,10 @@ export default function RegistrationForm() {
                   </div>
 
                   <div className="field" style={{ gridColumn: "1 / -1" }}>
-                    <label>صورة المستفيد(ة)</label>
+                    <label>صورة المستفيد(ة) <span style={{ color: "#dc2626", fontWeight: 900 }}>*</span></label>
                     <input
                       type="file"
+                      required
                       accept="image/jpeg,image/png,image/webp"
                       onChange={(e) => changeChildPhoto(index, e.target.files?.[0] || null)}
                     />

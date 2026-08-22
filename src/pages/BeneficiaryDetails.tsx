@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase, PHOTO_BUCKET } from "../lib/supabase";
 import { printBeneficiaryPdf } from "../lib/pdf";
 import type { Beneficiary, Family } from "../types/beneficiary";
@@ -52,6 +52,16 @@ export default function BeneficiaryDetails() {
 
   const familyLabel = family?.family_status === "normal" ? "عادية" : family?.family_status === "siblings" ? "إخوة" : "يتيم";
 
+  const handleBack = () => {
+    // نرجع لنفس صفحة الإدارة السابقة، مع الاحتفاظ بالحالة المحفوظة في sessionStorage.
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/admin");
+  };
+
   return (
     <main className="container" style={{ padding: "30px 0 60px" }} dir="rtl">
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
@@ -62,7 +72,7 @@ export default function BeneficiaryDetails() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-primary" onClick={() => printBeneficiaryPdf(siblings)}>طباعة ملفات الأسرة</button>
-          <Link className="btn btn-ghost" to="/admin">رجوع</Link>
+          <button type="button" className="btn btn-ghost" onClick={handleBack}>رجوع للطلبات</button>
         </div>
       </div>
 

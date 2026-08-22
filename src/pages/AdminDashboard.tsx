@@ -29,6 +29,55 @@ type FamilyRow = Family & { beneficiaries: Beneficiary[] };
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 type DashboardTab = "overview" | "families" | "lines" | "reports";
 
+const ADMIN_RETURN_STATE_KEY = "jossour_admin_return_state";
+
+type AdminReturnState = {
+  search: string;
+  status: StatusFilter;
+  tab: DashboardTab;
+  schoolFilter: string;
+  busFilter: string;
+  genderFilter: string;
+  familyStatusFilter: string;
+  reportSchool: string;
+  openLine: string | null;
+  scrollY: number;
+};
+
+function consumeAdminReturnState(): AdminReturnState | null {
+  try {
+    const raw = sessionStorage.getItem(ADMIN_RETURN_STATE_KEY);
+    if (!raw) return null;
+
+    sessionStorage.removeItem(ADMIN_RETURN_STATE_KEY);
+    const parsed = JSON.parse(raw) as Partial<AdminReturnState>;
+
+    if (
+      typeof parsed.search !== "string" ||
+      typeof parsed.status !== "string" ||
+      typeof parsed.tab !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      search: parsed.search,
+      status: parsed.status as StatusFilter,
+      tab: parsed.tab as DashboardTab,
+      schoolFilter: typeof parsed.schoolFilter === "string" ? parsed.schoolFilter : "all",
+      busFilter: typeof parsed.busFilter === "string" ? parsed.busFilter : "all",
+      genderFilter: typeof parsed.genderFilter === "string" ? parsed.genderFilter : "all",
+      familyStatusFilter: typeof parsed.familyStatusFilter === "string" ? parsed.familyStatusFilter : "all",
+      reportSchool: typeof parsed.reportSchool === "string" ? parsed.reportSchool : "all",
+      openLine: typeof parsed.openLine === "string" ? parsed.openLine : null,
+      scrollY: typeof parsed.scrollY === "number" ? parsed.scrollY : 0,
+    };
+  } catch {
+    sessionStorage.removeItem(ADMIN_RETURN_STATE_KEY);
+    return null;
+  }
+}
+
 function familyLabel(v: FamilyStatus) {
   return v === "normal" ? "فرد" : v === "siblings" ? "إخوة" : "يتم";
 }
@@ -217,24 +266,27 @@ function downloadExcel(
 }
 
 export default function AdminDashboard() {
+  const [returnState] = useState<AdminReturnState | null>(() => consumeAdminReturnState());
   const [families, setFamilies] = useState<FamilyRow[]>([]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
-  const [tab, setTab] = useState<DashboardTab>("overview");
+  const [search, setSearch] = useState(returnState?.search ?? "");
+  const [status, setStatus] = useState<StatusFilter>(returnState?.status ?? "all");
+  const [tab, setTab] = useState<DashboardTab>(returnState?.tab ?? "overview");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [openLine, setOpenLine] = useState<string | null>(null);
+  const [openLine, setOpenLine] = useState<string | null>(returnState?.openLine ?? null);
   const [registrationOpen, setRegistrationOpen] = useState(true);
   const [registrationChecking, setRegistrationChecking] = useState(true);
-  const [schoolFilter, setSchoolFilter] = useState("all");
-  const [busFilter, setBusFilter] = useState("all");
-  const [genderFilter, setGenderFilter] = useState("all");
-  const [familyStatusFilter, setFamilyStatusFilter] = useState("all");
-  const [reportSchool, setReportSchool] = useState("all");
+  const [schoolFilter, setSchoolFilter] = useState(returnState?.schoolFilter ?? "all");
+  const [busFilter, setBusFilter] = useState(returnState?.busFilter ?? "all");
+  const [genderFilter, setGenderFilter] = useState(returnState?.genderFilter ?? "all");
+  const [familyStatusFilter, setFamilyStatusFilter] = useState(returnState?.familyStatusFilter ?? "all");
+  const [reportSchool, setReportSchool] = useState(returnState?.reportSchool ?? "all");
 
-  const load = async () => {
-    setLoading(true);
+  const load = async (showLoader = true) => {
+    // فالتحديثات الداخلية ما نخليوش الصفحة ترجع للـ loading،
+    // باش يبقى المستخدم فنفس موضع السكرول.
+    if (showLoader) setLoading(true);
     setError("");
 
     const [familyResult, childResult, registrationResult] = await Promise.all([
@@ -263,12 +315,42 @@ export default function AdminDashboard() {
       );
     }
 
-    setLoading(false);
+    if (showLoader) setLoading(false);
   };
 
   useEffect(() => {
     void load();
   }, []);
+
+  // عند الرجوع من صفحة الملف، نعيد نفس موضع التمرير الذي كان عليه المستخدم.
+  useEffect(() => {
+    if (loading || !returnState || returnState.scrollY <= 0) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: returnState.scrollY, behavior: "auto" });
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [loading, returnState]);
+
+  const saveReturnState = () => {
+    const snapshot: AdminReturnState = {
+      search,
+      status,
+      tab,
+      schoolFilter,
+      busFilter,
+      genderFilter,
+      familyStatusFilter,
+      reportSchool,
+      openLine,
+      scrollY: window.scrollY,
+    };
+
+    sessionStorage.setItem(ADMIN_RETURN_STATE_KEY, JSON.stringify(snapshot));
+  };
 
   // في حالتي "في الانتظار" و"مرفوضة" نعرض للعامل الإداري
   // صفحة "الطلبات" فقط، ونخفي "الرئيسية" و"الخطوط".
@@ -547,7 +629,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    await load();
+    await load(false);
     setBusyId(null);
   };
 
@@ -567,7 +649,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    await load();
+    await load(false);
     setBusyId(null);
   };
 
@@ -871,7 +953,13 @@ export default function AdminDashboard() {
                           <b>{child.child_order}. {child.full_name}</b>
                           <span>{child.school} • مسار: {child.route_number || "—"} • حافلة: {child.bus_number} • محطة: {child.bus_stop_number}</span>
                         </div>
-                        <Link to={`/admin/beneficiary/${child.id}`} className="view-btn">فتح الملف</Link>
+                        <Link
+                            to={`/admin/beneficiary/${child.id}`}
+                            className="view-btn"
+                            onClick={saveReturnState}
+                          >
+                            فتح الملف
+                          </Link>
                       </div>
                     ))}
                   </div>
